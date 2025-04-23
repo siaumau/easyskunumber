@@ -273,42 +273,43 @@ function updateLayersUI() {
             }
         });
         
-        // 添加移動圖層上下的箭頭按鈕
-        const upButton = document.createElement('span');
-        upButton.className = 'layer-up';
-        upButton.innerHTML = '⬆️';
-        upButton.title = '向上移動圖層';
-        upButton.dataset.index = i;
-        upButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(e.target.dataset.index);
-            if (idx < app.layers.length - 1) {
+        // 僅在非最上層顯示向上移動按鈕
+        if (i < app.layers.length - 1) {
+            const upButton = document.createElement('span');
+            upButton.className = 'layer-up';
+            upButton.innerHTML = '⬆️';
+            upButton.title = '向上移動圖層';
+            upButton.dataset.index = i;
+            upButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(e.target.dataset.index);
                 [app.layers[idx], app.layers[idx+1]] = [app.layers[idx+1], app.layers[idx]];
                 app.activeLayerIndex = idx + 1;
                 updateLayersUI();
                 render();
                 saveToHistory();
-            }
-        });
-        layerItem.appendChild(upButton);
+            });
+            layerItem.appendChild(upButton);
+        }
 
-        const downButton = document.createElement('span');
-        downButton.className = 'layer-down';
-        downButton.innerHTML = '⬇️';
-        downButton.title = '向下移動圖層';
-        downButton.dataset.index = i;
-        downButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(e.target.dataset.index);
-            if (idx > 0) {
+        // 僅在非最下層顯示向下移動按鈕
+        if (i > 0) {
+            const downButton = document.createElement('span');
+            downButton.className = 'layer-down';
+            downButton.innerHTML = '⬇️';
+            downButton.title = '向下移動圖層';
+            downButton.dataset.index = i;
+            downButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(e.target.dataset.index);
                 [app.layers[idx], app.layers[idx-1]] = [app.layers[idx-1], app.layers[idx]];
                 app.activeLayerIndex = idx - 1;
                 updateLayersUI();
                 render();
                 saveToHistory();
-            }
-        });
-        layerItem.appendChild(downButton);
+            });
+            layerItem.appendChild(downButton);
+        }
         
         // 組裝圖層項
         layerItem.appendChild(visibilityIcon);
