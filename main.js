@@ -2025,19 +2025,15 @@ async function handleTemplateFiles(e) {
         return Object.fromEntries(headers.map((h, i) => [h, cols[i]]));
     });
 
-    // 備份原始圖層屬性和內容
+    // 備份原始圖層內容 (只備份圖片數據，後面清空再重繪)
+    const backupDataURLs = app.layers.map(layer => layer.content.toDataURL());
+    // 備份原始圖層位置與尺寸，用於後續繪製比例保持
     const backupLayers = app.layers.map(layer => ({
-        id: layer.id,
         name: layer.name,
-        type: layer.type,
-        visible: layer.visible,
-        opacity: layer.opacity,
-        blendMode: layer.blendMode,
         x: layer.x,
         y: layer.y,
         width: layer.width || layer.content.width,
-        height: layer.height || layer.content.height,
-        dataURL: layer.content.toDataURL()
+        height: layer.height || layer.content.height
     }));
 
     for (let i = 0; i < rows.length; i++) {
@@ -2059,38 +2055,31 @@ async function handleTemplateFiles(e) {
                         const img = new Image();
                         img.onload = () => {
                             const ctx = layer.content.getContext('2d');
-                            // 清空整個圖層
+                            // 清空整個圖層畫布
                             ctx.clearRect(0, 0, layer.content.width, layer.content.height);
-                            // 查找該層在備份中的尺寸與位置
-                            const originalLayer = backupLayers.find(bl => bl.name === layer.name);
-                            if (!originalLayer) { r(); return; }
-                            const targetWidth = originalLayer.width;
-                            const targetHeight = originalLayer.height;
-                            // 計算裁剪區域以維持原圖長寬比
-                            const imgRatio = img.width / img.height;
-                            const targetRatio = targetWidth / targetHeight;
-                            let sx = 0, sy = 0, sw = img.width, sh = img.height;
-                            if (imgRatio > targetRatio) {
-                                // 圖片較寬，裁剪兩側
-                                sw = Math.round(img.height * targetRatio);
-                                sx = Math.round((img.width - sw) / 2);
-                            } else if (imgRatio < targetRatio) {
-                                // 圖片較高，裁剪上下
-                                sh = Math.round(img.width / targetRatio);
-                                sy = Math.round((img.height - sh) / 2);
-                            }
-                            // 繪製到指定原始圖層位置與尺寸，以保持固定長寬比
+                            // 取得原始備份位置與尺寸
+                            const original = backupLayers.find(bl => bl.name === layer.name);
+                            if (!original) { r(); return; }
+                            const targetW = original.width;
+                            const targetH = original.height;
+                            // 使用 contain 模式：整張圖縮放至 fit 於目標尺寸
+                            const scale = Math.min(targetW / img.width, targetH / img.height);
+                            const drawW = img.width * scale;
+                            const drawH = img.height * scale;
+                            // 居中或依需求置頂：此處垂直居中，可改為 dy = original.y
+                            const dx = original.x + (targetW - drawW) / 2;
+                            const dy = original.y + (targetH - drawH) / 2;
                             ctx.drawImage(
                                 img,
-                                sx, sy, sw, sh,
-                                originalLayer.x, originalLayer.y,
-                                targetWidth, targetHeight
+                                0, 0, img.width, img.height,
+                                dx, dy,
+                                drawW, drawH
                             );
-                            // 還原圖層屬性
-                            layer.x = originalLayer.x;
-                            layer.y = originalLayer.y;
-                            layer.width = targetWidth;
-                            layer.height = targetHeight;
+                            // 更新圖層尺寸與位置（若之後調整大小功能需要）
+                            layer.x = original.x;
+                            layer.y = original.y;
+                            layer.width = targetW;
+                            layer.height = targetH;
                             r();
                         };
                         img.src = dataURL;
