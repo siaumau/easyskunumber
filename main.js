@@ -2004,6 +2004,15 @@ document.getElementById('apply-template').addEventListener('click', () => {
 document.getElementById('template-input').addEventListener('change', handleTemplateFiles);
 
 async function handleTemplateFiles(e) {
+    // 確保 PSC 中有名為 'Logo' 的圖層，供批次替換
+    let logoLayer = app.layers.find(l => l.name === 'Logo' && l.type === LayerType.BITMAP);
+    if (!logoLayer) {
+        // 若不存在，新增一個空白 Logo 層並設置初始位置和大小
+        logoLayer = addLayer('Logo', LayerType.BITMAP);
+        // 若要調整 Logo 層位置/大小，可在此修改，範例：
+        // logoLayer.x = 700; logoLayer.y = 20; logoLayer.width = 100; logoLayer.height = 100;
+        updateLayersUI();
+    }
     const files = Array.from(e.target.files);
     const csvFile = files.find(f => f.name.toLowerCase().endsWith('.csv'));
     if (!csvFile) {
