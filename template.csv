@@ -1,8 +1,4 @@
-# 第一行為欄位名稱，請填入畫布上對應的圖層名稱（**只取 BITMAP 圖層**，文字圖層請改用程式內編輯文字功能）
-A,B,Logo
 
-# 後續每一列代表一組輸出
-# 依序對應「A」、「B」、「Logo」三個圖層
-photo1A.png,photo1B.png,logo1.png
-photo2A.png,photo2B.png,logo2.png
-photo3A.png,photo3B.png,logo3.png
+A,B,Logo
+04.png,02.png,logo.png
+03.png,04.png,logo.png

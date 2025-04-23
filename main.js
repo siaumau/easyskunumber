@@ -31,6 +31,13 @@ const LayerType = {
     TEXT: 'text'
 };
 
+// 批次套版時各圖層寬度佔畫布比例配置 (key: 圖層名稱)
+const templateLayerWidthRatios = {
+    'A': 0.3,
+    'B': 0.3,
+    'Logo': 0.4
+};
+
 // 當頁面加載完成時初始化應用
 document.addEventListener('DOMContentLoaded', function() {
     initApp();
@@ -43,32 +50,32 @@ function initApp() {
     app.tempCtx = app.tempCanvas.getContext('2d');
     app.textInput = document.getElementById('text-input');
     app.textInputContainer = document.querySelector('.text-input-container');
-    
+
     // 初始化鎖定長寬比功能
     app.lockAspectRatio = false;
-    
+
     // 設置臨時畫布大小
     app.tempCanvas.width = app.canvas.width;
     app.tempCanvas.height = app.canvas.height;
-    
+
     // 初始化透明背景圖案
     initTransparentBackground();
-    
+
     // 初始化一個背景圖層
     addLayer('背景', LayerType.BITMAP);
-    
+
     // 初始化事件監聽器
     initEventListeners();
-    
+
     // 初始化圖層大小調整功能
     initResizeFeature();
-    
+
     // 設置尺寸輸入處理器
     setupSizeInputHandlers();
-    
+
     // 首次渲染
     render();
-    
+
     // 預設選擇移動工具
     document.getElementById('move-tool').classList.add('active');
     app.currentTool = 'move';
@@ -121,18 +128,18 @@ function addLayer(name, type) {
         y: 0,
         content: document.createElement('canvas')
     };
-    
+
     // 設置圖層畫布
     layer.content.width = app.canvas.width;
     layer.content.height = app.canvas.height;
-    
+
     // 如果是背景圖層，填充白色
     if (name === '背景') {
         const ctx = layer.content.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, layer.content.width, layer.content.height);
     }
-    
+
     // 如果是文字圖層，添加文字特有屬性
     if (type === LayerType.TEXT) {
         layer.text = '雙擊編輯文字';
@@ -142,25 +149,25 @@ function addLayer(name, type) {
         layer.fontBold = false;
         layer.fontItalic = false;
         layer.fontUnderline = false;
-        
+
         // 渲染初始文字
         const ctx = layer.content.getContext('2d');
         ctx.font = `${layer.fontSize}px ${layer.fontFamily}`;
         ctx.fillStyle = layer.fontColor;
         ctx.fillText(layer.text, 10, 30);
     }
-    
+
     // 添加到圖層列表
     app.layers.push(layer);
     app.activeLayerIndex = app.layers.length - 1;
-    
+
     // 更新UI
     updateLayersUI();
     updatePropertiesPanel();
-    
+
     // 保存歷史記錄
     saveToHistory();
-    
+
     return layer;
 }
 
@@ -168,26 +175,26 @@ function addLayer(name, type) {
 function createNewFile() {
     const width = parseInt(document.getElementById('new-width').value);
     const height = parseInt(document.getElementById('new-height').value);
-    
+
     if (width > 0 && height > 0) {
         // 重設畫布大小
         app.canvas.width = width;
         app.canvas.height = height;
         app.tempCanvas.width = width;
         app.tempCanvas.height = height;
-        
+
         // 重設狀態
         app.layers = [];
         app.activeLayerIndex = -1;
         app.history = [];
         app.historyIndex = -1;
-        
+
         // 添加背景圖層（白色）
         addLayer('背景', LayerType.BITMAP);
-        
+
         // 更新畫布尺寸信息
         document.getElementById('canvas-info').textContent = `${width} x ${height} px`;
-        
+
         // 隱藏對話框
         document.getElementById('new-file-modal').style.display = 'none';
     }
@@ -213,14 +220,14 @@ function deleteActiveLayer() {
 function updateLayersUI() {
     const layersList = document.getElementById('layers-list');
     layersList.innerHTML = '';
-    
+
     // 反向迭代圖層以便上面的圖層在UI中顯示在頂部
     for (let i = app.layers.length - 1; i >= 0; i--) {
         const layer = app.layers[i];
         const layerItem = document.createElement('div');
         layerItem.className = `layer-item ${i === app.activeLayerIndex ? 'active' : ''}`;
         layerItem.dataset.index = i;
-        
+
         // 圖層可見性圖標
         const visibilityIcon = document.createElement('span');
         visibilityIcon.className = 'layer-visibility';
@@ -230,17 +237,17 @@ function updateLayersUI() {
             e.stopPropagation();
             toggleLayerVisibility(parseInt(e.target.dataset.index));
         });
-        
+
         // 圖層名稱
         const nameSpan = document.createElement('span');
         nameSpan.textContent = layer.name;
         nameSpan.className = 'layer-name';
-        
+
         // 圖層類型圖標
         const typeIcon = document.createElement('span');
         typeIcon.textContent = layer.type === LayerType.TEXT ? 'T' : '🖌️';
         typeIcon.className = 'layer-type';
-        
+
         // 刪除按鈕
         const deleteButton = document.createElement('span');
         deleteButton.className = 'layer-delete';
@@ -253,7 +260,7 @@ function updateLayersUI() {
                 deleteLayer(parseInt(e.target.dataset.index));
             }
         });
-        
+
         // 僅在非最上層顯示向上移動按鈕
         if (i < app.layers.length - 1) {
             const upButton = document.createElement('span');
@@ -291,18 +298,18 @@ function updateLayersUI() {
             });
             layerItem.appendChild(downButton);
         }
-        
+
         // 組裝圖層項
         layerItem.appendChild(visibilityIcon);
         layerItem.appendChild(nameSpan);
         layerItem.appendChild(typeIcon);
         layerItem.appendChild(deleteButton);
-        
+
         // 添加點擊事件
         layerItem.addEventListener('click', () => {
             setActiveLayer(parseInt(layerItem.dataset.index));
         });
-        
+
         // 新增拖放調整圖層順序功能
         layerItem.setAttribute('draggable', true);
         layerItem.addEventListener('dragstart', e => {
@@ -321,7 +328,7 @@ function updateLayersUI() {
             render();
             saveToHistory();
         });
-        
+
         layersList.appendChild(layerItem);
     }
 }
@@ -355,14 +362,14 @@ app.lockAspectRatio = false;  // 預設不鎖定比例
 // 更新屬性面板，添加鎖定長寬比選項
 function updatePropertiesPanel() {
     if (app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
-    
+
     // 更新基本屬性
     document.getElementById('layer-name').value = layer.name;
     document.getElementById('layer-opacity').value = layer.opacity * 100;
     document.getElementById('blend-mode').value = layer.blendMode;
-    
+
     // 更新文字屬性面板
     const textProperties = document.getElementById('text-properties');
     if (layer.type === LayerType.TEXT) {
@@ -370,7 +377,7 @@ function updatePropertiesPanel() {
         document.getElementById('font-family').value = layer.fontFamily;
         document.getElementById('font-size').value = layer.fontSize;
         document.getElementById('font-color').value = layer.fontColor;
-        
+
         // 更新文字樣式按鈕狀態
         document.getElementById('font-bold').classList.toggle('active', layer.fontBold);
         document.getElementById('font-italic').classList.toggle('active', layer.fontItalic);
@@ -378,13 +385,13 @@ function updatePropertiesPanel() {
     } else {
         textProperties.style.display = 'none';
     }
-    
+
     // 顯示或隱藏圖片屬性面板
     const imageProperties = document.getElementById('image-properties');
     if (layer.type === LayerType.BITMAP && imageProperties) {
         imageProperties.style.display = 'block';
         document.getElementById('lock-aspect-ratio').checked = app.lockAspectRatio;
-        
+
         // 更新尺寸顯示
         const width = layer.width || layer.content.width;
         const height = layer.height || layer.content.height;
@@ -397,12 +404,12 @@ function updatePropertiesPanel() {
 // 更新文字圖層樣式
 function updateTextLayerStyle() {
     if (app.activeLayerIndex < 0 || app.layers[app.activeLayerIndex].type !== LayerType.TEXT) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     layer.fontFamily = document.getElementById('font-family').value;
     layer.fontSize = parseInt(document.getElementById('font-size').value);
     layer.fontColor = document.getElementById('font-color').value;
-    
+
     // 重新渲染文字
     renderTextLayer(layer);
     render();
@@ -412,13 +419,13 @@ function updateTextLayerStyle() {
 // 切換文字粗體
 function toggleFontBold() {
     if (app.activeLayerIndex < 0 || app.layers[app.activeLayerIndex].type !== LayerType.TEXT) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     layer.fontBold = !layer.fontBold;
-    
+
     // 更新按鈕狀態
     document.getElementById('font-bold').classList.toggle('active', layer.fontBold);
-    
+
     // 重新渲染文字
     renderTextLayer(layer);
     render();
@@ -428,13 +435,13 @@ function toggleFontBold() {
 // 切換文字斜體
 function toggleFontItalic() {
     if (app.activeLayerIndex < 0 || app.layers[app.activeLayerIndex].type !== LayerType.TEXT) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     layer.fontItalic = !layer.fontItalic;
-    
+
     // 更新按鈕狀態
     document.getElementById('font-italic').classList.toggle('active', layer.fontItalic);
-    
+
     // 重新渲染文字
     renderTextLayer(layer);
     render();
@@ -444,13 +451,13 @@ function toggleFontItalic() {
 // 切換文字底線
 function toggleFontUnderline() {
     if (app.activeLayerIndex < 0 || app.layers[app.activeLayerIndex].type !== LayerType.TEXT) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     layer.fontUnderline = !layer.fontUnderline;
-    
+
     // 更新按鈕狀態
     document.getElementById('font-underline').classList.toggle('active', layer.fontUnderline);
-    
+
     // 重新渲染文字
     renderTextLayer(layer);
     render();
@@ -461,18 +468,18 @@ function toggleFontUnderline() {
 function renderTextLayer(layer) {
     const ctx = layer.content.getContext('2d');
     ctx.clearRect(0, 0, layer.content.width, layer.content.height);
-    
+
     // 設置字型
     let fontStyle = '';
     if (layer.fontItalic) fontStyle += 'italic ';
     if (layer.fontBold) fontStyle += 'bold ';
-    
+
     ctx.font = `${fontStyle}${layer.fontSize}px ${layer.fontFamily}`;
     ctx.fillStyle = layer.fontColor;
-    
+
     // 繪製文字
     ctx.fillText(layer.text, 10, 30);
-    
+
     // 繪製底線
     if (layer.fontUnderline) {
         const textWidth = ctx.measureText(layer.text).width;
@@ -493,19 +500,19 @@ function renderTextLayer(layer) {
 function render() {
     // 清除主畫布
     app.ctx.clearRect(0, 0, app.canvas.width, app.canvas.height);
-    
+
     // 檢查背景圖層是否可見
     const backgroundLayer = app.layers.find(layer => layer.name === '背景');
     const isBackgroundVisible = backgroundLayer && backgroundLayer.visible;
-    
+
     // 如果背景不可見，繪製透明棋盤格
     if (!isBackgroundVisible) {
         // 直接在畫布上繪製棋盤格
         const size = 16; // 棋盤格大小
-        
+
         // 保存當前狀態
         app.ctx.save();
-        
+
         // 繪製棋盤格模式
         for (let y = 0; y < app.canvas.height; y += size) {
             for (let x = 0; x < app.canvas.width; x += size) {
@@ -518,22 +525,22 @@ function render() {
                 app.ctx.fillRect(x, y, size, size);
             }
         }
-        
+
         // 恢復狀態
         app.ctx.restore();
     }
-    
+
     // 按順序繪製每個可見圖層
     for (let i = 0; i < app.layers.length; i++) {
         const layer = app.layers[i];
         if (layer.visible) {
             app.ctx.globalAlpha = layer.opacity;
             app.ctx.globalCompositeOperation = getCompositeOperation(layer.blendMode);
-            
+
             // 檢查是否有自定義大小
             if (layer.width && layer.height) {
                 app.ctx.drawImage(
-                    layer.content, 
+                    layer.content,
                     0, 0, layer.content.width, layer.content.height,
                     layer.x, layer.y, layer.width, layer.height
                 );
@@ -542,7 +549,7 @@ function render() {
             }
         }
     }
-    
+
     // 重置畫布狀態
     app.ctx.globalAlpha = 1;
     app.ctx.globalCompositeOperation = 'source-over';
@@ -565,7 +572,7 @@ function saveToHistory() {
     // 深拷貝圖層狀態
     const layersClone = app.layers.map(layer => {
         const layerClone = {...layer};
-        
+
         // 複製畫布內容
         const canvasClone = document.createElement('canvas');
         canvasClone.width = layer.content.width;
@@ -573,32 +580,32 @@ function saveToHistory() {
         const ctx = canvasClone.getContext('2d');
         ctx.drawImage(layer.content, 0, 0);
         layerClone.content = canvasClone;
-        
+
         // 保存縮放後的層尺寸
         if (layer.width !== undefined && layer.height !== undefined) {
             layerClone.width = layer.width;
             layerClone.height = layer.height;
         }
-        
+
         return layerClone;
     });
-    
+
     // 如果我們在歷史記錄中間進行了操作，刪除之後的歷史
     if (app.historyIndex < app.history.length - 1) {
         app.history = app.history.slice(0, app.historyIndex + 1);
     }
-    
+
     // 添加到歷史記錄
     app.history.push({
         layers: layersClone,
         activeLayerIndex: app.activeLayerIndex
     });
-    
+
     // 限制歷史記錄長度
     if (app.history.length > 20) {
         app.history.shift();
     }
-    
+
     app.historyIndex = app.history.length - 1;
 }
 
@@ -623,7 +630,7 @@ function restoreFromHistory() {
     const state = app.history[app.historyIndex];
     app.layers = state.layers.map(layer => {
         const layerClone = {...layer};
-        
+
         // 複製畫布內容
         const canvasClone = document.createElement('canvas');
         canvasClone.width = layer.content.width;
@@ -631,12 +638,12 @@ function restoreFromHistory() {
         const ctx = canvasClone.getContext('2d');
         ctx.drawImage(layer.content, 0, 0);
         layerClone.content = canvasClone;
-        
+
         return layerClone;
     });
-    
+
     app.activeLayerIndex = state.activeLayerIndex;
-    
+
     // 更新UI
     updateLayersUI();
     updatePropertiesPanel();
@@ -655,29 +662,29 @@ function initEventListeners() {
                 render();
                 return;
             }
-            
+
             if (toolId.includes('tool')) {
                 document.querySelectorAll('.tool-button').forEach(b => b.classList.remove('active'));
                 e.target.classList.add('active');
                 app.currentTool = toolId.replace('-tool', '');
                 document.getElementById('tool-info').textContent = `工具: ${app.currentTool}`;
-                
+
                 // 隱藏文字輸入框
                 app.textInputContainer.style.display = 'none';
             }
         });
     });
-    
+
     // 畫筆大小選擇
     document.getElementById('brush-size').addEventListener('change', (e) => {
         app.brushSize = parseInt(e.target.value);
     });
-    
+
     // 顏色選擇器
     document.getElementById('color-picker').addEventListener('change', (e) => {
         app.brushColor = e.target.value;
     });
-    
+
     // 圖層屬性變更
     document.getElementById('layer-name').addEventListener('change', (e) => {
         if (app.activeLayerIndex >= 0) {
@@ -686,18 +693,18 @@ function initEventListeners() {
             saveToHistory();
         }
     });
-    
+
     document.getElementById('layer-opacity').addEventListener('input', (e) => {
         if (app.activeLayerIndex >= 0) {
             app.layers[app.activeLayerIndex].opacity = parseInt(e.target.value) / 100;
             render();
         }
     });
-    
+
     document.getElementById('layer-opacity').addEventListener('change', () => {
         saveToHistory();
     });
-    
+
     document.getElementById('blend-mode').addEventListener('change', (e) => {
         if (app.activeLayerIndex >= 0) {
             app.layers[app.activeLayerIndex].blendMode = e.target.value;
@@ -705,7 +712,7 @@ function initEventListeners() {
             saveToHistory();
         }
     });
-    
+
     // 文字屬性變更
     document.getElementById('font-family').addEventListener('change', updateTextLayerStyle);
     document.getElementById('font-size').addEventListener('change', updateTextLayerStyle);
@@ -713,17 +720,17 @@ function initEventListeners() {
     document.getElementById('font-bold').addEventListener('click', toggleFontBold);
     document.getElementById('font-italic').addEventListener('click', toggleFontItalic);
     document.getElementById('font-underline').addEventListener('click', toggleFontUnderline);
-    
+
     // 畫布事件
     app.canvas.addEventListener('mousedown', handleCanvasMouseDown);
     app.canvas.addEventListener('mousemove', handleCanvasMouseMove);
     app.canvas.addEventListener('mouseup', handleCanvasMouseUp);
     app.canvas.addEventListener('dblclick', handleCanvasDoubleClick);
     app.canvas.addEventListener('mousemove', updatePositionInfo);
-    
+
     // 文字輸入事件
     app.textInput.addEventListener('blur', applyTextInput);
-    
+
     // 菜單事件
     document.getElementById('new-file').addEventListener('click', showNewFileDialog);
     document.getElementById('open-file').addEventListener('click', openFile);
@@ -734,26 +741,26 @@ function initEventListeners() {
     document.getElementById('delete-layer').addEventListener('click', deleteActiveLayer);
     document.getElementById('add-text-layer').addEventListener('click', addTextLayer);
     document.getElementById('add-image-layer').addEventListener('click', addImageLayer);
-    
+
     // 處理下拉選單的延遲隱藏
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
         let timeoutId;
-        
+
         // 滑鼠移入時
         item.addEventListener('mouseenter', () => {
             clearTimeout(timeoutId);
-            
+
             // 先隱藏所有其他選單
             document.querySelectorAll('.dropdown-content').forEach(menu => {
                 menu.classList.remove('show');
             });
-            
+
             // 顯示當前選單
             const dropdown = item.querySelector('.dropdown-content');
             if (dropdown) dropdown.classList.add('show');
         });
-        
+
         // 滑鼠移出時
         item.addEventListener('mouseleave', () => {
             const dropdown = item.querySelector('.dropdown-content');
@@ -764,17 +771,17 @@ function initEventListeners() {
             }
         });
     });
-    
+
     // 新建檔案對話框
     document.getElementById('new-file-cancel').addEventListener('click', () => {
         document.getElementById('new-file-modal').style.display = 'none';
     });
-    
+
     document.getElementById('new-file-confirm').addEventListener('click', createNewFile);
-    
+
     // 檔案上傳
     document.getElementById('file-input').addEventListener('change', handleFileUpload);
-    
+
     // 防止頁面離開時資料遺失
     window.addEventListener('beforeunload', (e) => {
         const confirmationMessage = '您有未保存的更改，確定要離開嗎？';
@@ -796,12 +803,12 @@ function handleCanvasMouseDown(e) {
     const rect = app.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     app.lastX = x;
     app.lastY = y;
-    
+
     if (app.activeLayerIndex < 0) return;
-    
+
     switch (app.currentTool) {
         case 'move':
             // 開始拖動
@@ -832,7 +839,7 @@ function handleCanvasMouseMove(e) {
     const rect = app.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     if (app.dragInfo.isDragging) {
         // 移動圖層
         const layer = app.layers[app.activeLayerIndex];
@@ -843,7 +850,7 @@ function handleCanvasMouseMove(e) {
         // 繪製
         drawOnLayer(x, y, true);
     }
-    
+
     app.lastX = x;
     app.lastY = y;
 }
@@ -853,7 +860,7 @@ function handleCanvasMouseUp() {
     if (app.dragInfo.isDragging || app.isDrawing) {
         saveToHistory();
     }
-    
+
     app.dragInfo.isDragging = false;
     app.isDrawing = false;
 }
@@ -861,17 +868,17 @@ function handleCanvasMouseUp() {
 // 在圖層上繪製
 function drawOnLayer(x, y, isMove) {
     if (app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     if (layer.type !== LayerType.BITMAP) return;
-    
+
     const ctx = layer.content.getContext('2d');
-    
+
     // 設置繪製參數
     ctx.lineWidth = app.brushSize;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    
+
     if (app.currentTool === 'brush') {
         ctx.strokeStyle = app.brushColor;
         ctx.globalCompositeOperation = 'source-over';
@@ -879,7 +886,7 @@ function drawOnLayer(x, y, isMove) {
         ctx.strokeStyle = '#ffffff';
         ctx.globalCompositeOperation = 'destination-out';
     }
-    
+
     // 開始繪製
     if (!isMove) {
         ctx.beginPath();
@@ -892,10 +899,10 @@ function drawOnLayer(x, y, isMove) {
         ctx.lineTo(x - layer.x, y - layer.y);
         ctx.stroke();
     }
-    
+
     // 重置繪圖環境
     ctx.globalCompositeOperation = 'source-over';
-    
+
     render();
 }
 
@@ -904,7 +911,7 @@ function handleCanvasDoubleClick(e) {
     const rect = app.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     if (app.activeLayerIndex >= 0 && app.layers[app.activeLayerIndex].type === LayerType.TEXT) {
         showTextInput(x, y);
     }
@@ -913,12 +920,12 @@ function handleCanvasDoubleClick(e) {
 // 顯示文字輸入框
 function showTextInput(x, y) {
     const layer = app.layers[app.activeLayerIndex];
-    
+
     // 設置文字輸入框位置
     app.textInputContainer.style.display = 'block';
     app.textInputContainer.style.left = (layer.x + 10) + 'px';
     app.textInputContainer.style.top = (layer.y + 10) + 'px';
-    
+
     // 設置文字輸入框樣式
     app.textInput.style.fontFamily = layer.fontFamily;
     app.textInput.style.fontSize = layer.fontSize + 'px';
@@ -926,10 +933,10 @@ function showTextInput(x, y) {
     app.textInput.style.fontWeight = layer.fontBold ? 'bold' : 'normal';
     app.textInput.style.fontStyle = layer.fontItalic ? 'italic' : 'normal';
     app.textInput.style.textDecoration = layer.fontUnderline ? 'underline' : 'none';
-    
+
     // 設置文字內容
     app.textInput.textContent = layer.text;
-    
+
     // 聚焦文字輸入框
     app.textInput.focus();
 }
@@ -937,17 +944,17 @@ function showTextInput(x, y) {
 // 應用文字輸入
 function applyTextInput() {
     if (app.activeLayerIndex < 0 || app.layers[app.activeLayerIndex].type !== LayerType.TEXT) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     layer.text = app.textInput.textContent || '雙擊編輯文字';
-    
+
     // 重新渲染文字
     renderTextLayer(layer);
     render();
-    
+
     // 隱藏文字輸入框
     app.textInputContainer.style.display = 'none';
-    
+
     saveToHistory();
 }
 
@@ -961,26 +968,26 @@ function showNewFileDialog() {
 function createNewFile() {
     const width = parseInt(document.getElementById('new-width').value);
     const height = parseInt(document.getElementById('new-height').value);
-    
+
     if (width > 0 && height > 0) {
         // 重設畫布大小
         app.canvas.width = width;
         app.canvas.height = height;
         app.tempCanvas.width = width;
         app.tempCanvas.height = height;
-        
+
         // 重設狀態
         app.layers = [];
         app.activeLayerIndex = -1;
         app.history = [];
         app.historyIndex = -1;
-        
+
         // 添加背景圖層（白色）
         addLayer('背景', LayerType.BITMAP);
-        
+
         // 更新畫布尺寸信息
         document.getElementById('canvas-info').textContent = `${width} x ${height} px`;
-        
+
         // 隱藏對話框
         document.getElementById('new-file-modal').style.display = 'none';
     }
@@ -991,11 +998,11 @@ function openFile() {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.psc,image/*'; // 接受專案檔和所有圖片格式
-    
+
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         // 檢查檔案類型
         if (file.name.toLowerCase().endsWith('.psc')) {
             // 處理專案檔案
@@ -1005,7 +1012,7 @@ function openFile() {
             openImageFile(file);
         }
     });
-    
+
     // 模擬點擊開啟檔案對話框
     document.body.appendChild(fileInput);
     fileInput.click();
@@ -1019,30 +1026,30 @@ function openProjectFile(file) {
         try {
             // 解析 JSON 檔案
             const fileData = JSON.parse(event.target.result);
-            
+
             // 驗證檔案版本
             if (!fileData.version || !fileData.layers) {
                 throw new Error('無效的專案檔格式');
             }
-            
+
             // 重設畫布大小
             app.canvas.width = fileData.width || 800;
             app.canvas.height = fileData.height || 600;
             app.tempCanvas.width = app.canvas.width;
             app.tempCanvas.height = app.canvas.height;
-            
+
             // 更新畫布尺寸信息
             document.getElementById('canvas-info').textContent = `${app.canvas.width} x ${app.canvas.height} px`;
-            
+
             // 重設狀態
             app.layers = [];
             app.activeLayerIndex = -1;
             app.history = [];
             app.historyIndex = -1;
-            
+
             // 載入圖層
             const loadImagePromises = [];
-            
+
             fileData.layers.forEach((layerData, index) => {
                 const promise = new Promise((resolve) => {
                     const layer = {
@@ -1056,24 +1063,24 @@ function openProjectFile(file) {
                         y: layerData.y || 0,
                         content: document.createElement('canvas')
                     };
-                    
+
                     // 設置圖層畫布
                     layer.content.width = app.canvas.width;
                     layer.content.height = app.canvas.height;
-                    
+
                     // 恢復先前調整的寬高
                     if (layerData.width !== undefined && layerData.height !== undefined) {
                         layer.width = layerData.width;
                         layer.height = layerData.height;
                     }
-                    
+
                     // 載入圖層內容
                     if (layerData.contentData) {
                         const img = new Image();
                         img.onload = function() {
                             const ctx = layer.content.getContext('2d');
                             ctx.drawImage(img, 0, 0);
-                            
+
                             // 如果是文字圖層，添加文字特有屬性
                             if (layer.type === LayerType.TEXT) {
                                 layer.text = layerData.text || '雙擊編輯文字';
@@ -1084,7 +1091,7 @@ function openProjectFile(file) {
                                 layer.fontItalic = layerData.fontItalic || false;
                                 layer.fontUnderline = layerData.fontUnderline || false;
                             }
-                            
+
                             app.layers.push(layer);
                             resolve();
                         };
@@ -1101,37 +1108,37 @@ function openProjectFile(file) {
                         resolve();
                     }
                 });
-                
+
                 loadImagePromises.push(promise);
             });
-            
+
             // 當所有圖層載入完成後，更新UI並渲染
             Promise.all(loadImagePromises).then(() => {
                 if (app.layers.length > 0) {
                     app.activeLayerIndex = 0;
                 }
-                
+
                 // 更新UI
                 updateLayersUI();
                 updatePropertiesPanel();
                 render();
-                
+
                 // 保存歷史記錄
                 saveToHistory();
-                
- 
+
+
             });
-            
+
         } catch (error) {
             console.error('載入專案檔失敗:', error);
             alert('載入專案檔失敗: ' + error.message);
         }
     };
-    
+
     reader.onerror = function() {
         alert('讀取檔案時發生錯誤');
     };
-    
+
     reader.readAsText(file);
 }
 
@@ -1144,30 +1151,34 @@ function openImageFile(file) {
         img.onload = function() {
             // 創建新圖層
             const layer = addLayer(file.name, LayerType.BITMAP);
-            
+
             // 將圖片繪製到圖層上
             const ctx = layer.content.getContext('2d');
-            
+
             // 計算縮放比例，確保圖片完全顯示在畫布中
             const scale = Math.min(
                 app.canvas.width / img.width,
                 app.canvas.height / img.height
             );
-            
+
             // 計算縮放後的尺寸
             const scaledWidth = img.width * scale;
             const scaledHeight = img.height * scale;
-            
+
             // 計算居中位置
             const x = (app.canvas.width - scaledWidth) / 2;
             const y = (app.canvas.height - scaledHeight) / 2;
-            
+
             // 清空圖層
             ctx.clearRect(0, 0, layer.content.width, layer.content.height);
-            
+
             // 繪製圖片
             ctx.drawImage(img, 0, 0, img.width, img.height, x, y, scaledWidth, scaledHeight);
-            
+
+            // 設定圖層尺寸以供後續批次縮放使用
+            layer.width = scaledWidth;
+            layer.height = scaledHeight;
+
             // 更新畫布
             render();
             saveToHistory();
@@ -1180,11 +1191,11 @@ function openImageFile(file) {
         };
         img.src = event.target.result;
     };
-    
+
     reader.onerror = function() {
         alert('讀取圖片檔案時發生錯誤');
     };
-    
+
     reader.readAsDataURL(file);
 }
 // 儲存檔案
@@ -1199,37 +1210,37 @@ function saveFile() {
                 // 克隆圖層但不包含畫布
                 const layerClone = { ...layer };
                 delete layerClone.content;
-                
+
                 // 將畫布內容轉換為 base64 字符串
                 const dataURL = layer.content.toDataURL('image/png');
                 layerClone.contentData = dataURL;
-                
+
                 // 保存縮放後的層尺寸
                 if (layer.width !== undefined && layer.height !== undefined) {
                     layerClone.width = layer.width;
                     layerClone.height = layer.height;
                 }
-                
+
                 return layerClone;
             })
         };
-        
+
         // 將數據轉換為 JSON 字符串
         const jsonString = JSON.stringify(fileData);
-        
+
         // 創建一個 Blob 對象
         const blob = new Blob([jsonString], { type: 'application/json' });
-        
+
         // 創建一個下載鏈接
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = 'photoshop_clone_project.psc';
-        
+
         // 模擬點擊下載
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
     } catch (error) {
         console.error('保存檔案時出錯:', error);
         alert('保存檔案失敗');
@@ -1244,20 +1255,20 @@ function exportToPNG() {
         exportCanvas.width = app.canvas.width;
         exportCanvas.height = app.canvas.height;
         const ctx = exportCanvas.getContext('2d');
-        
+
         // 清除畫布（透明背景）
         ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
-        
+
         // 檢查是否所有圖層都是隱藏的
         const allLayersHidden = app.layers.every(layer => !layer.visible);
-        
+
         // 如果所有圖層都隱藏了，提醒用戶
         if (allLayersHidden) {
             if (!confirm('目前所有圖層都是隱藏的，匯出的圖片將是完全透明的。是否繼續？')) {
                 return;
             }
         }
-        
+
         // 繪製所有可見圖層
         for (let i = 0; i < app.layers.length; i++) {
             const layer = app.layers[i];
@@ -1267,16 +1278,16 @@ function exportToPNG() {
                 ctx.drawImage(layer.content, layer.x, layer.y);
             }
         }
-        
+
         // 將畫布轉換為 PNG 並下載
         const link = document.createElement('a');
         link.href = exportCanvas.toDataURL('image/png');
         link.download = 'photoshop_clone_export.png';
-        
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
     } catch (error) {
         console.error('匯出 PNG 時出錯:', error);
         alert('匯出 PNG 失敗');
@@ -1294,45 +1305,49 @@ function addImageLayer() {
 function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(event) {
         const img = new Image();
         img.onload = function() {
             // 創建新圖層
             const layer = addLayer(file.name, LayerType.BITMAP);
-            
+
             // 將圖片繪製到圖層上
             const ctx = layer.content.getContext('2d');
-            
+
             // 計算縮放比例，確保圖片完全顯示在畫布中
             const scale = Math.min(
                 app.canvas.width / img.width,
                 app.canvas.height / img.height
             );
-            
+
             // 計算縮放後的尺寸
             const scaledWidth = img.width * scale;
             const scaledHeight = img.height * scale;
-            
+
             // 計算居中位置
             const x = (app.canvas.width - scaledWidth) / 2;
             const y = (app.canvas.height - scaledHeight) / 2;
-            
+
             // 繪製圖片
             ctx.drawImage(img, 0, 0, img.width, img.height, x, y, scaledWidth, scaledHeight);
-            
+
+            // 設定圖層尺寸以供後續批次縮放使用
+            layer.width = scaledWidth;
+            layer.height = scaledHeight;
+
             // 更新畫布
             render();
             saveToHistory();
-            
+
             // 移除成功提示
             // alert('圖片已成功載入為新圖層');
         };
         img.src = event.target.result;
     };
     reader.readAsDataURL(file);
-    
+
     // 重置文件輸入框，使得相同文件可以再次被選擇
     e.target.value = '';
 }
@@ -1363,10 +1378,10 @@ function createResizeHandles() {
     app.resizeInfo.resizeHandles = [];
 
     if (app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     const canvasWrapper = document.getElementById('canvas-wrapper');
-    
+
     // 獲取圖層的邊界
     const layerRect = {
         left: layer.x,
@@ -1374,7 +1389,7 @@ function createResizeHandles() {
         right: layer.x + (layer.width || layer.content.width),
         bottom: layer.y + (layer.height || layer.content.height)
     };
-    
+
     // 控制點位置
     const handlePositions = [
         { id: 'tl', left: layerRect.left, top: layerRect.top, cursor: 'nw-resize' },
@@ -1386,14 +1401,14 @@ function createResizeHandles() {
         { id: 'bm', left: (layerRect.left + layerRect.right) / 2, top: layerRect.bottom, cursor: 's-resize' },
         { id: 'br', left: layerRect.right, top: layerRect.bottom, cursor: 'se-resize' }
     ];
-    
+
     // 創建控制點元素
     handlePositions.forEach(pos => {
         const handle = document.createElement('div');
         handle.className = 'resize-handle';
         handle.id = `resize-handle-${pos.id}`;
         handle.dataset.handle = pos.id;
-        
+
         handle.style.position = 'absolute';
         handle.style.width = '10px';
         handle.style.height = '10px';
@@ -1403,16 +1418,16 @@ function createResizeHandles() {
         handle.style.transform = 'translate(-50%, -50%)';
         handle.style.cursor = pos.cursor;
         handle.style.zIndex = '20';
-        
+
         handle.style.left = `${pos.left}px`;
         handle.style.top = `${pos.top}px`;
-        
+
         handle.addEventListener('mousedown', startResize);
-        
+
         canvasWrapper.appendChild(handle);
         app.resizeInfo.resizeHandles.push(handle);
     });
-    
+
     // 添加邊框來顯示選中的圖層
     const border = document.createElement('div');
     border.className = 'layer-border';
@@ -1424,7 +1439,7 @@ function createResizeHandles() {
     border.style.border = '1px dashed #007bff';
     border.style.pointerEvents = 'none';
     border.style.zIndex = '19';
-    
+
     canvasWrapper.appendChild(border);
     app.resizeInfo.resizeHandles.push(border);
 }
@@ -1433,11 +1448,11 @@ function createResizeHandles() {
 function startResize(e) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
-    
+
     app.resizeInfo.isResizing = true;
     app.resizeInfo.handle = e.target.dataset.handle;
     app.resizeInfo.startX = e.clientX;
@@ -1446,7 +1461,7 @@ function startResize(e) {
     app.resizeInfo.layerStartY = layer.y;
     app.resizeInfo.layerStartWidth = layer.width || layer.content.width;
     app.resizeInfo.layerStartHeight = layer.height || layer.content.height;
-    
+
     document.addEventListener('mousemove', resizeLayer);
     document.addEventListener('mouseup', endResize);
 }
@@ -1455,29 +1470,29 @@ function startResize(e) {
 // 修改調整圖層大小函數以支援鎖定長寬比
 function resizeLayer(e) {
     if (!app.resizeInfo.isResizing || app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
     const deltaX = e.clientX - app.resizeInfo.startX;
     const deltaY = e.clientY - app.resizeInfo.startY;
-    
+
     // 原始尺寸和比例
     const originalWidth = app.resizeInfo.layerStartWidth;
     const originalHeight = app.resizeInfo.layerStartHeight;
     const aspectRatio = originalWidth / originalHeight;
-    
+
     // 根據不同的控制點計算新尺寸和位置
     let newX = layer.x;
     let newY = layer.y;
     let newWidth = originalWidth;
     let newHeight = originalHeight;
-    
+
     switch (app.resizeInfo.handle) {
         case 'tl': // 左上
             newX = app.resizeInfo.layerStartX + deltaX;
             newY = app.resizeInfo.layerStartY + deltaY;
             newWidth = originalWidth - deltaX;
             newHeight = originalHeight - deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -1492,7 +1507,7 @@ function resizeLayer(e) {
         case 'tm': // 上中
             newY = app.resizeInfo.layerStartY + deltaY;
             newHeight = originalHeight - deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 newWidth = newHeight * aspectRatio;
@@ -1503,7 +1518,7 @@ function resizeLayer(e) {
             newY = app.resizeInfo.layerStartY + deltaY;
             newWidth = originalWidth + deltaX;
             newHeight = originalHeight - deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -1517,7 +1532,7 @@ function resizeLayer(e) {
         case 'ml': // 左中
             newX = app.resizeInfo.layerStartX + deltaX;
             newWidth = originalWidth - deltaX;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 newHeight = newWidth / aspectRatio;
@@ -1526,7 +1541,7 @@ function resizeLayer(e) {
             break;
         case 'mr': // 右中
             newWidth = originalWidth + deltaX;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 newHeight = newWidth / aspectRatio;
@@ -1537,7 +1552,7 @@ function resizeLayer(e) {
             newX = app.resizeInfo.layerStartX + deltaX;
             newWidth = originalWidth - deltaX;
             newHeight = originalHeight + deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -1550,7 +1565,7 @@ function resizeLayer(e) {
             break;
         case 'bm': // 下中
             newHeight = originalHeight + deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 newWidth = newHeight * aspectRatio;
@@ -1560,7 +1575,7 @@ function resizeLayer(e) {
         case 'br': // 右下
             newWidth = originalWidth + deltaX;
             newHeight = originalHeight + deltaY;
-            
+
             // 鎖定比例時調整
             if (app.lockAspectRatio) {
                 if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -1571,26 +1586,26 @@ function resizeLayer(e) {
             }
             break;
     }
-    
+
     // 確保尺寸不小於最小值
     newWidth = Math.max(20, newWidth);
     newHeight = Math.max(20, newHeight);
-    
+
     // 更新圖層屬性
     layer.x = newX;
     layer.y = newY;
     layer.width = newWidth;
     layer.height = newHeight;
-    
+
     // 更新調整大小控制點的位置
     updateResizeHandlePositions();
-    
+
     // 更新尺寸顯示
     if (document.getElementById('layer-width')) {
         document.getElementById('layer-width').value = Math.round(newWidth);
         document.getElementById('layer-height').value = Math.round(newHeight);
     }
-    
+
     // 渲染畫布
     render();
 }
@@ -1599,10 +1614,10 @@ function resizeLayer(e) {
 function endResize() {
     if (app.resizeInfo.isResizing) {
         app.resizeInfo.isResizing = false;
-        
+
         // 保存操作到歷史記錄
         saveToHistory();
-        
+
         // 移除事件監聽器
         document.removeEventListener('mousemove', resizeLayer);
         document.removeEventListener('mouseup', endResize);
@@ -1612,9 +1627,9 @@ function endResize() {
 // 更新調整大小控制點的位置
 function updateResizeHandlePositions() {
     if (app.activeLayerIndex < 0) return;
-    
+
     const layer = app.layers[app.activeLayerIndex];
-    
+
     // 獲取圖層的邊界
     const layerRect = {
         left: layer.x,
@@ -1622,7 +1637,7 @@ function updateResizeHandlePositions() {
         right: layer.x + (layer.width || layer.content.width),
         bottom: layer.y + (layer.height || layer.content.height)
     };
-    
+
     // 控制點位置
     const handlePositions = {
         'tl': { left: layerRect.left, top: layerRect.top },
@@ -1634,7 +1649,7 @@ function updateResizeHandlePositions() {
         'bm': { left: (layerRect.left + layerRect.right) / 2, top: layerRect.bottom },
         'br': { left: layerRect.right, top: layerRect.bottom }
     };
-    
+
     // 更新控制點元素位置
     app.resizeInfo.resizeHandles.forEach(handle => {
         if (handle.className === 'resize-handle') {
@@ -1671,19 +1686,19 @@ function toggleResizeHandles(show) {
 function render() {
     // 清除主畫布
     app.ctx.clearRect(0, 0, app.canvas.width, app.canvas.height);
-    
+
     // 檢查背景圖層是否可見
     const backgroundLayer = app.layers.find(layer => layer.name === '背景');
     const isBackgroundVisible = backgroundLayer && backgroundLayer.visible;
-    
+
     // 如果背景不可見，繪製透明棋盤格
     if (!isBackgroundVisible) {
         // 直接在畫布上繪製棋盤格
         const size = 16; // 棋盤格大小
-        
+
         // 保存當前狀態
         app.ctx.save();
-        
+
         // 繪製棋盤格模式
         for (let y = 0; y < app.canvas.height; y += size) {
             for (let x = 0; x < app.canvas.width; x += size) {
@@ -1696,22 +1711,22 @@ function render() {
                 app.ctx.fillRect(x, y, size, size);
             }
         }
-        
+
         // 恢復狀態
         app.ctx.restore();
     }
-    
+
     // 按順序繪製每個可見圖層
     for (let i = 0; i < app.layers.length; i++) {
         const layer = app.layers[i];
         if (layer.visible) {
             app.ctx.globalAlpha = layer.opacity;
             app.ctx.globalCompositeOperation = getCompositeOperation(layer.blendMode);
-            
+
             // 檢查是否有自定義大小
             if (layer.width && layer.height) {
                 app.ctx.drawImage(
-                    layer.content, 
+                    layer.content,
                     0, 0, layer.content.width, layer.content.height,
                     layer.x, layer.y, layer.width, layer.height
                 );
@@ -1720,7 +1735,7 @@ function render() {
             }
         }
     }
-    
+
     // 重置畫布狀態
     app.ctx.globalAlpha = 1;
     app.ctx.globalCompositeOperation = 'source-over';
@@ -1734,31 +1749,31 @@ function exportToPNG() {
         exportCanvas.width = app.canvas.width;
         exportCanvas.height = app.canvas.height;
         const ctx = exportCanvas.getContext('2d', { alpha: true }); // 確保支援透明度
-        
+
         // 清除畫布（透明背景）
         ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
-        
+
         // 檢查是否所有圖層都是隱藏的
         const allLayersHidden = app.layers.every(layer => !layer.visible);
-        
+
         // 如果所有圖層都隱藏了，提醒用戶
         if (allLayersHidden) {
             if (!confirm('目前所有圖層都是隱藏的，匯出的圖片將是完全透明的。是否繼續？')) {
                 return;
             }
         }
-        
+
         // 繪製所有可見圖層
         for (let i = 0; i < app.layers.length; i++) {
             const layer = app.layers[i];
             if (layer.visible) {
                 ctx.globalAlpha = layer.opacity;
                 ctx.globalCompositeOperation = getCompositeOperation(layer.blendMode);
-                
+
                 // 檢查是否有自定義大小
                 if (layer.width && layer.height) {
                     ctx.drawImage(
-                        layer.content, 
+                        layer.content,
                         0, 0, layer.content.width, layer.content.height,
                         layer.x, layer.y, layer.width, layer.height
                     );
@@ -1767,16 +1782,16 @@ function exportToPNG() {
                 }
             }
         }
-        
+
         // 將畫布轉換為 PNG 並下載
         const link = document.createElement('a');
         link.href = exportCanvas.toDataURL('image/png');
         link.download = 'photoshop_clone_export.png';
-        
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
     } catch (error) {
         console.error('匯出 PNG 時出錯:', error);
         alert('匯出 PNG 失敗');
@@ -1787,14 +1802,14 @@ function exportToPNG() {
 function setActiveLayer(index) {
     // 先隱藏現有的控制點
     toggleResizeHandles(false);
-    
+
     app.activeLayerIndex = index;
     updateLayersUI();
     updatePropertiesPanel();
-    
+
     // 隱藏文字輸入框
     app.textInputContainer.style.display = 'none';
-    
+
     // 如果選中的是圖片圖層，顯示調整大小控制點
     if (index >= 0 && app.layers[index].type === LayerType.BITMAP) {
         toggleResizeHandles(true);
@@ -1808,8 +1823,8 @@ function updateEventListeners() {
         if (button.id && button.id.includes('tool')) {
             button.addEventListener('click', (e) => {
                 // 如果活動圖層是圖片類型，且當前工具是移動工具，顯示控制點
-                if (app.activeLayerIndex >= 0 && 
-                    app.layers[app.activeLayerIndex].type === LayerType.BITMAP && 
+                if (app.activeLayerIndex >= 0 &&
+                    app.layers[app.activeLayerIndex].type === LayerType.BITMAP &&
                     e.target.id === 'move-tool') {
                     toggleResizeHandles(true);
                 } else {
@@ -1818,7 +1833,7 @@ function updateEventListeners() {
             });
         }
     });
-    
+
     // 畫布點擊時，如果不是在調整大小，移除控制點
     app.canvas.addEventListener('mousedown', (e) => {
         if (!app.resizeInfo.isResizing && app.currentTool !== 'move') {
@@ -1832,13 +1847,13 @@ function handleCanvasMouseUp() {
     if (app.dragInfo.isDragging || app.isDrawing) {
         saveToHistory();
     }
-    
+
     app.dragInfo.isDragging = false;
     app.isDrawing = false;
-    
+
     // 如果活動圖層是圖片類型，且當前工具是移動工具，更新控制點
-    if (app.activeLayerIndex >= 0 && 
-        app.layers[app.activeLayerIndex].type === LayerType.BITMAP && 
+    if (app.activeLayerIndex >= 0 &&
+        app.layers[app.activeLayerIndex].type === LayerType.BITMAP &&
         app.currentTool === 'move') {
         updateResizeHandlePositions();
     }
@@ -1855,59 +1870,59 @@ function initResizeFeature() {
 function setupSizeInputHandlers() {
     const widthInput = document.getElementById('layer-width');
     const heightInput = document.getElementById('layer-height');
-    
+
     if (widthInput && heightInput) {
         widthInput.addEventListener('change', function(e) {
             if (app.activeLayerIndex < 0) return;
-            
+
             const layer = app.layers[app.activeLayerIndex];
             const newWidth = parseInt(e.target.value);
-            
+
             if (isNaN(newWidth) || newWidth < 20) return;
-            
+
             const originalWidth = layer.width || layer.content.width;
             const originalHeight = layer.height || layer.content.height;
             const aspectRatio = originalWidth / originalHeight;
-            
+
             layer.width = newWidth;
-            
+
             // 如果鎖定比例，同時調整高度
             if (app.lockAspectRatio) {
                 layer.height = newWidth / aspectRatio;
                 heightInput.value = Math.round(layer.height);
             }
-            
+
             updateResizeHandlePositions();
             render();
             saveToHistory();
         });
-        
+
         heightInput.addEventListener('change', function(e) {
             if (app.activeLayerIndex < 0) return;
-            
+
             const layer = app.layers[app.activeLayerIndex];
             const newHeight = parseInt(e.target.value);
-            
+
             if (isNaN(newHeight) || newHeight < 20) return;
-            
+
             const originalWidth = layer.width || layer.content.width;
             const originalHeight = layer.height || layer.content.height;
             const aspectRatio = originalWidth / originalHeight;
-            
+
             layer.height = newHeight;
-            
+
             // 如果鎖定比例，同時調整寬度
             if (app.lockAspectRatio) {
                 layer.width = newHeight * aspectRatio;
                 widthInput.value = Math.round(layer.width);
             }
-            
+
             updateResizeHandlePositions();
             render();
             saveToHistory();
         });
     }
-    
+
     // 鎖定長寬比切換
     const lockAspectRatioCheckbox = document.getElementById('lock-aspect-ratio');
     if (lockAspectRatioCheckbox) {
@@ -1926,17 +1941,17 @@ function createTransparentPattern() {
     const patternSize = 16; // 每個格子的大小
     patternCanvas.width = patternSize * 2;
     patternCanvas.height = patternSize * 2;
-    
+
     const patternCtx = patternCanvas.getContext('2d');
-    
+
     // 繪製棋盤格
     patternCtx.fillStyle = '#ffffff'; // 白色格子
     patternCtx.fillRect(0, 0, patternSize * 2, patternSize * 2);
-    
+
     patternCtx.fillStyle = '#cccccc'; // 灰色格子
     patternCtx.fillRect(0, 0, patternSize, patternSize);
     patternCtx.fillRect(patternSize, patternSize, patternSize, patternSize);
-    
+
     // 創建圖案對象
     return patternCanvas;
 }
@@ -1955,27 +1970,27 @@ function deleteLayer(index) {
         alert('無法刪除最後一個圖層。');
         return;
     }
-    
+
     // 刪除圖層
     app.layers.splice(index, 1);
-    
+
     // 更新當前活動圖層
     if (app.activeLayerIndex >= app.layers.length) {
         app.activeLayerIndex = app.layers.length - 1;
     } else if (app.activeLayerIndex === index) {
         app.activeLayerIndex = Math.min(index, app.layers.length - 1);
     }
-    
+
     // 更新 UI
     updateLayersUI();
     updatePropertiesPanel();
-    
+
     // 隱藏調整大小控制點
     toggleResizeHandles(false);
-    
+
     // 重新渲染
     render();
-    
+
     // 保存到歷史記錄
     saveToHistory();
 }
@@ -2010,8 +2025,20 @@ async function handleTemplateFiles(e) {
         return Object.fromEntries(headers.map((h, i) => [h, cols[i]]));
     });
 
-    // 備份原始圖層內容
-    const backupDataURLs = app.layers.map(layer => layer.content.toDataURL());
+    // 備份原始圖層屬性和內容
+    const backupLayers = app.layers.map(layer => ({
+        id: layer.id,
+        name: layer.name,
+        type: layer.type,
+        visible: layer.visible,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        x: layer.x,
+        y: layer.y,
+        width: layer.width || layer.content.width,
+        height: layer.height || layer.content.height,
+        dataURL: layer.content.toDataURL()
+    }));
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -2032,14 +2059,38 @@ async function handleTemplateFiles(e) {
                         const img = new Image();
                         img.onload = () => {
                             const ctx = layer.content.getContext('2d');
+                            // 清空整個圖層
                             ctx.clearRect(0, 0, layer.content.width, layer.content.height);
+                            // 查找該層在備份中的尺寸與位置
+                            const originalLayer = backupLayers.find(bl => bl.name === layer.name);
+                            if (!originalLayer) { r(); return; }
+                            const targetWidth = originalLayer.width;
+                            const targetHeight = originalLayer.height;
+                            // 計算裁剪區域以維持原圖長寬比
+                            const imgRatio = img.width / img.height;
+                            const targetRatio = targetWidth / targetHeight;
+                            let sx = 0, sy = 0, sw = img.width, sh = img.height;
+                            if (imgRatio > targetRatio) {
+                                // 圖片較寬，裁剪兩側
+                                sw = Math.round(img.height * targetRatio);
+                                sx = Math.round((img.width - sw) / 2);
+                            } else if (imgRatio < targetRatio) {
+                                // 圖片較高，裁剪上下
+                                sh = Math.round(img.width / targetRatio);
+                                sy = Math.round((img.height - sh) / 2);
+                            }
+                            // 繪製到指定原始圖層位置與尺寸，以保持固定長寬比
                             ctx.drawImage(
                                 img,
-                                0, 0, img.width, img.height,
-                                layer.x, layer.y,
-                                layer.width || layer.content.width,
-                                layer.height || layer.content.height
+                                sx, sy, sw, sh,
+                                originalLayer.x, originalLayer.y,
+                                targetWidth, targetHeight
                             );
+                            // 還原圖層屬性
+                            layer.x = originalLayer.x;
+                            layer.y = originalLayer.y;
+                            layer.width = targetWidth;
+                            layer.height = targetHeight;
                             r();
                         };
                         img.src = dataURL;
@@ -2059,8 +2110,10 @@ async function handleTemplateFiles(e) {
                 exportCtx.globalAlpha = layer.opacity;
                 exportCtx.globalCompositeOperation = getCompositeOperation(layer.blendMode);
                 if (layer.width && layer.height) {
+                    // 僅繪製圖層內容的目標區域，以保持原始比例
                     exportCtx.drawImage(
-                        layer.content, 0, 0, layer.content.width, layer.content.height,
+                        layer.content,
+                        layer.x, layer.y, layer.width, layer.height,
                         layer.x, layer.y, layer.width, layer.height
                     );
                 } else {
@@ -2077,15 +2130,32 @@ async function handleTemplateFiles(e) {
         document.body.removeChild(link);
 
         // 還原原始圖層
-        app.layers.forEach((layer, idx) => {
-            const img = new Image();
-            img.onload = () => {
-                const ctx = layer.content.getContext('2d');
-                ctx.clearRect(0, 0, layer.content.width, layer.content.height);
-                ctx.drawImage(img, 0, 0);
-            };
-            img.src = backupDataURLs[idx];
-        });
+        await Promise.all(app.layers.map(async (layer, idx) => {
+            const backup = backupLayers.find(bl => bl.id === layer.id);
+            if (backup) {
+                const img = new Image();
+                await new Promise(resolve => {
+                    img.onload = () => {
+                        // 回復原始內容
+                        const ctx = layer.content.getContext('2d');
+                        ctx.clearRect(0, 0, layer.content.width, layer.content.height);
+                        ctx.drawImage(img, 0, 0);
+
+                        // 還原位置和尺寸
+                        layer.x = backup.x;
+                        layer.y = backup.y;
+                        layer.width = backup.width;
+                        layer.height = backup.height;
+
+                        resolve();
+                    };
+                    img.src = backup.dataURL;
+                });
+            }
+        }));
+
+        // 重新渲染畫布以顯示還原後的圖層
+        render();
     }
 
     // 清空輸入
