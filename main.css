@@ -482,3 +482,18 @@ canvas {
 .info-icon:hover {
     color: #666;
 }
+
+/* 下載 CSV icon 樣式覆蓋 */
+#download-template-csv {
+    background-color: transparent !important;
+    padding: 5px 10px;
+    text-decoration: none;
+}
+#download-template-csv:hover {
+    background-color: transparent !important;
+}
+
+/* 按鈕容器右對齊（必要時可移到更上層） */
+.layers-panel div[style*="margin-top"] {
+    text-align: right;
+}
