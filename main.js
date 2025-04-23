@@ -273,6 +273,43 @@ function updateLayersUI() {
             }
         });
         
+        // 添加移動圖層上下的箭頭按鈕
+        const upButton = document.createElement('span');
+        upButton.className = 'layer-up';
+        upButton.innerHTML = '⬆️';
+        upButton.title = '向上移動圖層';
+        upButton.dataset.index = i;
+        upButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(e.target.dataset.index);
+            if (idx < app.layers.length - 1) {
+                [app.layers[idx], app.layers[idx+1]] = [app.layers[idx+1], app.layers[idx]];
+                app.activeLayerIndex = idx + 1;
+                updateLayersUI();
+                render();
+                saveToHistory();
+            }
+        });
+        layerItem.appendChild(upButton);
+
+        const downButton = document.createElement('span');
+        downButton.className = 'layer-down';
+        downButton.innerHTML = '⬇️';
+        downButton.title = '向下移動圖層';
+        downButton.dataset.index = i;
+        downButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(e.target.dataset.index);
+            if (idx > 0) {
+                [app.layers[idx], app.layers[idx-1]] = [app.layers[idx-1], app.layers[idx]];
+                app.activeLayerIndex = idx - 1;
+                updateLayersUI();
+                render();
+                saveToHistory();
+            }
+        });
+        layerItem.appendChild(downButton);
+        
         // 組裝圖層項
         layerItem.appendChild(visibilityIcon);
         layerItem.appendChild(nameSpan);
@@ -535,6 +572,12 @@ function saveToHistory() {
         const ctx = canvasClone.getContext('2d');
         ctx.drawImage(layer.content, 0, 0);
         layerClone.content = canvasClone;
+        
+        // 保存縮放後的層尺寸
+        if (layer.width !== undefined && layer.height !== undefined) {
+            layerClone.width = layer.width;
+            layerClone.height = layer.height;
+        }
         
         return layerClone;
     });
@@ -1017,6 +1060,12 @@ function openProjectFile(file) {
                     layer.content.width = app.canvas.width;
                     layer.content.height = app.canvas.height;
                     
+                    // 恢復先前調整的寬高
+                    if (layerData.width !== undefined && layerData.height !== undefined) {
+                        layer.width = layerData.width;
+                        layer.height = layerData.height;
+                    }
+                    
                     // 載入圖層內容
                     if (layerData.contentData) {
                         const img = new Image();
@@ -1153,6 +1202,12 @@ function saveFile() {
                 // 將畫布內容轉換為 base64 字符串
                 const dataURL = layer.content.toDataURL('image/png');
                 layerClone.contentData = dataURL;
+                
+                // 保存縮放後的層尺寸
+                if (layer.width !== undefined && layer.height !== undefined) {
+                    layerClone.width = layer.width;
+                    layerClone.height = layer.height;
+                }
                 
                 return layerClone;
             })
