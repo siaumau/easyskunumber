@@ -1099,9 +1099,9 @@ function openImageFile(file) {
             // 更新畫布
             render();
             saveToHistory();
-            
+            // 自動顯示縮放控制點
+            setActiveLayer(app.activeLayerIndex);
             // 移除成功提示
-            // alert('圖片已成功載入為新圖層');
         };
         img.onerror = function() {
             alert('載入圖片失敗');
