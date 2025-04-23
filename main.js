@@ -22,6 +22,23 @@ const app = {
         startY: 0,
         layerStartX: 0,
         layerStartY: 0
+    },
+    marketing: {
+        templates: [
+            {
+                id: 'tpl1',
+                name: '雙圖示例',
+                slots: [
+                    { x:  50, y:  50, width: 200, height: 200 },  // imageA
+                    { x: 300, y:  50, width: 200, height: 200 }   // imageB
+                ],
+                overlaySrc: 'assets/overlay.png'              // 最上層 PNG
+            },
+            // ...更多樣板
+        ],
+        dataRows: [],            // csv 解析後的 [ {imageA, imageB}, … ]
+        selectedTemplate: null,   // 目前選中的 template 物件
+        currentSlots: []        // 編輯中暫存槽位資料
     }
 };
 
@@ -72,6 +89,8 @@ function initApp() {
     // 預設選擇移動工具
     document.getElementById('move-tool').classList.add('active');
     app.currentTool = 'move';
+    // 初始化行銷樣板管理功能
+    initMarketingTemplates();
 }
 
 // 整合新功能到現有代碼的總結說明
@@ -445,16 +464,19 @@ function render() {
     if (!isBackgroundVisible) {
         // 直接在畫布上繪製棋盤格
         const size = 16; // 棋盤格大小
-        const canvas = app.canvas;
         
         // 保存當前狀態
         app.ctx.save();
         
-        // 繪製棋盤格
-        for (let x = 0; x < canvas.width; x += size) {
-            for (let y = 0; y < canvas.height; y += size) {
-                const isEvenCell = ((x / size) + (y / size)) % 2 === 0;
-                app.ctx.fillStyle = isEvenCell ? '#ffffff' : '#cccccc';
+        // 繪製棋盤格模式
+        for (let y = 0; y < app.canvas.height; y += size) {
+            for (let x = 0; x < app.canvas.width; x += size) {
+                // 交替填充白色和淺灰色
+                if ((Math.floor(x / size) + Math.floor(y / size)) % 2 === 0) {
+                    app.ctx.fillStyle = '#FFFFFF';
+                } else {
+                    app.ctx.fillStyle = '#CCCCCC';
+                }
                 app.ctx.fillRect(x, y, size, size);
             }
         }
@@ -1900,4 +1922,182 @@ function deleteLayer(index) {
     
     // 保存到歷史記錄
     saveToHistory();
+}
+
+// 行銷樣板管理功能
+function initMarketingTemplates() {
+    renderSelectMarketingTemplates();
+    document.getElementById('manage-marketing-templates')
+      .addEventListener('click', () => {
+        renderMarketingTemplatesList();
+        document.getElementById('marketing-templates-modal').style.display = 'block';
+      });
+    document.getElementById('add-marketing-template')
+      .addEventListener('click', () => {
+        // 新建模板：清空編輯標記與槽位資料
+        document.getElementById('marketing-template-form').removeAttribute('data-editing-id');
+        document.getElementById('template-name').value = '';
+        document.getElementById('template-slots-count').value = 2;
+        app.marketing.currentSlots = [];
+        updateTemplateSlotsInputs(2);
+        document.getElementById('marketing-template-form').style.display = 'flex';
+      });
+    document.getElementById('template-slots-count')
+      .addEventListener('change', (e) => updateTemplateSlotsInputs(parseInt(e.target.value)));
+    document.getElementById('cancel-marketing-template')
+      .addEventListener('click', () => document.getElementById('marketing-templates-modal').style.display = 'none');
+    document.getElementById('save-marketing-template')
+      .addEventListener('click', saveMarketingTemplate);
+}
+
+function renderMarketingTemplatesList() {
+    const list = document.getElementById('marketing-templates-list');
+    list.innerHTML = '';
+    app.marketing.templates.forEach(tpl => {
+        const item = document.createElement('div');
+        item.textContent = tpl.name;
+        item.dataset.id = tpl.id;
+        item.addEventListener('click', () => loadMarketingTemplateForm(tpl.id));
+        list.appendChild(item);
+    });
+}
+
+function updateTemplateSlotsInputs(count) {
+    // 若 currentSlots 長度不符，初始化 default distribution
+    if (!app.marketing.currentSlots || app.marketing.currentSlots.length !== count) {
+        app.marketing.currentSlots = [];
+        // 預覽區寬度分割
+        const preview = document.getElementById('template-preview');
+        const rect = preview.getBoundingClientRect();
+        const slotW = rect.width / count;
+        const slotH = rect.height;
+        for (let i = 0; i < count; i++) {
+            app.marketing.currentSlots.push({ x: i * slotW, y: 0, width: slotW, height: slotH });
+        }
+    }
+    // 更新預覽區
+    renderTemplateSlotsPreview();
+}
+
+function loadMarketingTemplateForm(id) {
+    const tpl = app.marketing.templates.find(t => t.id === id);
+    if (!tpl) return;
+    const form = document.getElementById('marketing-template-form');
+    form.dataset.editingId = id;
+    document.getElementById('template-name').value = tpl.name;
+    document.getElementById('template-slots-count').value = tpl.slots.length;
+    // 設定當前槽位資料並渲染預覽
+    app.marketing.currentSlots = tpl.slots.map(slot => ({...slot}));
+    updateTemplateSlotsInputs(tpl.slots.length);
+    document.getElementById('marketing-template-form').style.display = 'flex';
+    updateOverlayPreview(tpl.overlaySrc);
+}
+
+function saveMarketingTemplate() {
+    const form = document.getElementById('marketing-template-form');
+    const name = document.getElementById('template-name').value.trim();
+    // 使用 currentSlots 作為最終槽位
+    const slots = app.marketing.currentSlots.map(s => ({ ...s }));
+    const overlayInput = document.getElementById('template-overlay');
+    const finalize = (tpl) => {
+        renderMarketingTemplatesList();
+        renderSelectMarketingTemplates();
+        document.getElementById('marketing-templates-modal').style.display = 'none';
+    };
+    if (form.dataset.editingId) {
+        const tpl = app.marketing.templates.find(t => t.id === form.dataset.editingId);
+        tpl.name = name;
+        tpl.slots = slots;
+        if (overlayInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => { tpl.overlaySrc = e.target.result; finalize(tpl); };
+            reader.readAsDataURL(overlayInput.files[0]);
+        } else finalize(tpl);
+    } else {
+        const id = `tpl${Date.now()}`;
+        const newTpl = { id, name, slots, overlaySrc: '' };
+        app.marketing.templates.push(newTpl);
+        if (overlayInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = e => { newTpl.overlaySrc = e.target.result; finalize(newTpl); };
+            reader.readAsDataURL(overlayInput.files[0]);
+        } else finalize(newTpl);
+    }
+}
+
+function renderSelectMarketingTemplates() {
+    const submenu = document.querySelector('#select-marketing-template .dropdown-content');
+    submenu.innerHTML = '';
+    app.marketing.templates.forEach(tpl => {
+        const item = document.createElement('div');
+        item.textContent = tpl.name;
+        item.dataset.id = tpl.id;
+        item.addEventListener('click', () => selectMarketingTemplate(tpl.id));
+        submenu.appendChild(item);
+    });
+}
+
+// 重寫 renderTemplateSlotsPreview：從 currentSlots 生成 draggable div
+function renderTemplateSlotsPreview() {
+    const preview = document.getElementById('template-preview');
+    // 清除現有槽位
+    preview.querySelectorAll('.template-slot').forEach(el => el.remove());
+    app.marketing.currentSlots.forEach((slotData, i) => {
+        const slot = document.createElement('div');
+        slot.className = 'template-slot';
+        slot.dataset.index = i;
+        // 位置、尺寸
+        slot.style.left = slotData.x + 'px';
+        slot.style.top = slotData.y + 'px';
+        slot.style.width = slotData.width + 'px';
+        slot.style.height = slotData.height + 'px';
+        slot.textContent = String(i+1).padStart(2,'0');
+        // 拖曳邏輯同步到 currentSlots
+        let offsetX, offsetY;
+        slot.addEventListener('mousedown', e => {
+            e.preventDefault();
+            offsetX = e.clientX - slot.getBoundingClientRect().left;
+            offsetY = e.clientY - slot.getBoundingClientRect().top;
+            function onMove(ev) {
+                const rect = preview.getBoundingClientRect();
+                let nx = ev.clientX - rect.left - offsetX;
+                let ny = ev.clientY - rect.top - offsetY;
+                nx = Math.max(0, Math.min(rect.width - slotData.width, nx));
+                ny = Math.max(0, Math.min(rect.height - slotData.height, ny));
+                slot.style.left = nx + 'px';
+                slot.style.top = ny + 'px';
+                // 更新資料
+                slotData.x = nx;
+                slotData.y = ny;
+            }
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        preview.appendChild(slot);
+    });
+}
+
+// 更新 Overlay 預覽
+const overlayInput = document.getElementById('template-overlay');
+if (overlayInput) {
+    overlayInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            document.getElementById('template-overlay-preview').style.backgroundImage = `url(${ev.target.result})`;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 在載入編輯樣板時同步 Overlay
+function updateOverlayPreview(src) {
+    if (src) {
+        document.getElementById('template-overlay-preview').style.backgroundImage = `url(${src})`;
+    }
 }

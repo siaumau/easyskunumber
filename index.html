@@ -37,6 +37,20 @@
                         <div id="merge-down">向下合併</div>
                     </div>
                 </span>
+                <span class="menu-item">
+                    行銷
+                    <div class="dropdown-content">
+                      <div id="import-marketing-csv">匯入 CSV 檔案</div>
+                      <div id="manage-marketing-templates">管理樣板</div>
+                      <div id="select-marketing-template" class="submenu">
+                        選擇樣板
+                        <div class="dropdown-content">
+                          <!-- 這裡由 JS 動態插入已匯入的樣板列表 -->
+                        </div>
+                      </div>
+                      <div id="batch-merge-marketing">批次合併並匯出</div>
+                    </div>
+                  </span>                
             </div>
         </div>
         
@@ -179,7 +193,118 @@
     
     <!-- 圖片上傳的隱藏輸入 -->
     <input type="file" id="file-input" style="display: none;" accept="image/*">
+    <input type="file" id="marketing-csv-input" accept=".csv" style="display:none">
+    <!-- 行銷樣板管理對話框 -->
+    <div id="marketing-templates-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-title">管理樣板</div>
+        <div class="modal-body">
+          <div id="marketing-templates-list"></div>
+          <button id="add-marketing-template" class="modal-button">新增樣板</button>
+          <div id="marketing-template-form" style="display:none; margin-top:10px; display:flex; flex-direction:column; height:100%;">
+            <!-- 預覽區域 -->
+            <div id="template-preview">
+              <div id="template-overlay-preview"></div>
+            </div>
+            <!-- 可滾動的表單區域 -->
+            <div id="template-form-body">
+              <div class="modal-form-group">
+                <label for="template-name">樣板名稱</label>
+                <input type="text" id="template-name">
+              </div>
+              <div class="modal-form-group">
+                <label for="template-slots-count">圖片槽數量</label>
+                <input type="number" id="template-slots-count" min="1" value="2">
+              </div>
+              <div class="modal-form-group">
+                <label for="template-overlay">上層 Overlay 圖片</label>
+                <input type="file" id="template-overlay" accept="image/*">
+              </div>
+              <div class="modal-buttons">
+                <button class="modal-button confirm" id="save-marketing-template">儲存</button>
+                <button class="modal-button cancel" id="cancel-marketing-template">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <script src="main.js"></script>
     
+    <script>
+    document.getElementById('import-marketing-csv')
+      .addEventListener('click', () => 
+        document.getElementById('marketing-csv-input').click()
+      );
+
+    document.getElementById('marketing-csv-input')
+      .addEventListener('change', handleMarketingCSVUpload);
+
+    document.getElementById('batch-merge-marketing')
+      .addEventListener('click', batchMergeMarketing);
+
+    // 動態 render 樣板列表時，也要幫每個條目綁定 selectMarketingTemplate
+    </script>
+    
+    <style>
+      /* 行銷樣板管理對話框加寬 */
+      #marketing-templates-modal .modal-content {
+        display: flex;
+        flex-direction: column;
+        width: 90%;
+        max-width: 1200px;
+        max-height: 90vh;
+      }
+      /* 滾動表單區塊 */
+      #marketing-templates-modal .modal-body {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #marketing-templates-modal .modal-content .modal-title {
+        flex: 0 0 auto;
+      }
+      #template-preview {
+        flex: 0 0 auto;
+      }
+      #template-form-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+      /* 圖槽可拖曳區塊 */
+      .template-slot {
+        position: absolute;
+        border: 2px dashed #007bff;
+        background: rgba(0,123,255,0.1);
+        cursor: move;
+      }
+      /* Overlay 預覽 */
+      #template-overlay-preview {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+      #marketing-templates-modal #marketing-template-form {
+        flex: 1 1 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      #marketing-templates-modal #template-preview {
+        flex: 0 0 200px !important;
+      }
+      #marketing-templates-modal #template-form-body {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+      }
+    </style>
 </body>
 </html>
