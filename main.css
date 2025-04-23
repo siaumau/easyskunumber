@@ -461,3 +461,24 @@ canvas {
         background-repeat: no-repeat;
         background-position: center;
       }
+
+/* 套用樣板按鈕樣式 */
+#apply-template {
+    background-color: #8a2be2;
+    color: white;
+}
+#apply-template:hover {
+    background-color: #7b1cc1;
+}
+
+/* 說明 icon 樣式 */
+.info-icon {
+    display: inline-block;
+    margin-left: 5px;
+    cursor: pointer;
+    font-size: 1.2em;
+    color: #999;
+}
+.info-icon:hover {
+    color: #666;
+}

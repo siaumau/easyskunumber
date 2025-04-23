@@ -2092,3 +2092,12 @@ async function handleTemplateFiles(e) {
     e.target.value = '';
     alert('套用完成，共匯出 ' + rows.length + ' 張圖片。');
 }
+
+// 說明按鈕顯示使用教學
+document.getElementById('template-help').addEventListener('click', () => {
+    const msg = `使用步驟：
+1. 點「下載範例 CSV」取得 template.csv。
+2. 同一資料夾放入要套用的圖片檔與該 CSV。
+3. 點「套用樣板」，選擇資料夾後自動批次輸出 PNG。`;
+    alert(msg);
+});
