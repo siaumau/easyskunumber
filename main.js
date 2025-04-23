@@ -1979,3 +1979,116 @@ function deleteLayer(index) {
     // 保存到歷史記錄
     saveToHistory();
 }
+
+// 套用樣板功能
+// 綁定按鈕觸發資料夾選取 CSV 和圖片
+document.getElementById('apply-template').addEventListener('click', () => {
+    document.getElementById('template-input').click();
+});
+
+document.getElementById('template-input').addEventListener('change', handleTemplateFiles);
+
+async function handleTemplateFiles(e) {
+    const files = Array.from(e.target.files);
+    const csvFile = files.find(f => f.name.toLowerCase().endsWith('.csv'));
+    if (!csvFile) {
+        alert('請選擇包含 CSV 的資料夾');
+        return;
+    }
+    const imageFiles = files.filter(f => !f.name.toLowerCase().endsWith('.csv'));
+
+    // 讀取 CSV
+    const csvText = await new Promise(resolve => {
+        const fr = new FileReader();
+        fr.onload = ev => resolve(ev.target.result);
+        fr.readAsText(csvFile);
+    });
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1).map(line => {
+        const cols = line.split(',').map(c => c.trim());
+        return Object.fromEntries(headers.map((h, i) => [h, cols[i]]));
+    });
+
+    // 備份原始圖層內容
+    const backupDataURLs = app.layers.map(layer => layer.content.toDataURL());
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        // 根據 CSV 更新對應圖層
+        await Promise.all(headers.map(async key => {
+            const layer = app.layers.find(l => l.name === key && l.type === LayerType.BITMAP);
+            if (layer && row[key]) {
+                const imgFile = imageFiles.find(f => f.name === row[key]);
+                if (imgFile) {
+                    // 讀取圖片
+                    const dataURL = await new Promise(r => {
+                        const fr = new FileReader();
+                        fr.onload = ev => r(ev.target.result);
+                        fr.readAsDataURL(imgFile);
+                    });
+                    // 繪製到圖層
+                    await new Promise(r => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const ctx = layer.content.getContext('2d');
+                            ctx.clearRect(0, 0, layer.content.width, layer.content.height);
+                            ctx.drawImage(
+                                img,
+                                0, 0, img.width, img.height,
+                                layer.x, layer.y,
+                                layer.width || layer.content.width,
+                                layer.height || layer.content.height
+                            );
+                            r();
+                        };
+                        img.src = dataURL;
+                    });
+                }
+            }
+        }));
+
+        // 將畫布匯出
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = app.canvas.width;
+        exportCanvas.height = app.canvas.height;
+        const exportCtx = exportCanvas.getContext('2d');
+        // 繪製圖層
+        for (const layer of app.layers) {
+            if (layer.visible) {
+                exportCtx.globalAlpha = layer.opacity;
+                exportCtx.globalCompositeOperation = getCompositeOperation(layer.blendMode);
+                if (layer.width && layer.height) {
+                    exportCtx.drawImage(
+                        layer.content, 0, 0, layer.content.width, layer.content.height,
+                        layer.x, layer.y, layer.width, layer.height
+                    );
+                } else {
+                    exportCtx.drawImage(layer.content, layer.x, layer.y);
+                }
+            }
+        }
+        // 下載
+        const link = document.createElement('a');
+        link.href = exportCanvas.toDataURL('image/png');
+        link.download = `template_${i+1}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // 還原原始圖層
+        app.layers.forEach((layer, idx) => {
+            const img = new Image();
+            img.onload = () => {
+                const ctx = layer.content.getContext('2d');
+                ctx.clearRect(0, 0, layer.content.width, layer.content.height);
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = backupDataURLs[idx];
+        });
+    }
+
+    // 清空輸入
+    e.target.value = '';
+    alert('套用完成，共匯出 ' + rows.length + ' 張圖片。');
+}

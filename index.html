@@ -63,6 +63,7 @@
                 </div>
                 <div style="margin-top: 10px;">
                     <button class="tool-button" id="add-layer">新增圖層</button>
+                    <button class="tool-button" id="apply-template">套用樣板</button>
                 </div>
             </div>
             
@@ -180,6 +181,9 @@
     <!-- 圖片上傳的隱藏輸入 -->
     <input type="file" id="file-input" style="display: none;" accept="image/*">
     
+    <!-- 套用樣板用的檔案輸入(選取資料夾與子檔案) -->
+    <input type="file" id="template-input" webkitdirectory multiple style="display:none">
+
     <script src="main.js"></script>
 </body>
 </html>
