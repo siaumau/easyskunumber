@@ -322,6 +322,25 @@ function updateLayersUI() {
             setActiveLayer(parseInt(layerItem.dataset.index));
         });
         
+        // 新增拖放調整圖層順序功能
+        layerItem.setAttribute('draggable', true);
+        layerItem.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', layerItem.dataset.index);
+        });
+        layerItem.addEventListener('dragover', e => {
+            e.preventDefault();
+        });
+        layerItem.addEventListener('drop', e => {
+            e.preventDefault();
+            const sourceIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            const targetIdx = parseInt(layerItem.dataset.index);
+            [app.layers[sourceIdx], app.layers[targetIdx]] = [app.layers[targetIdx], app.layers[sourceIdx]];
+            app.activeLayerIndex = targetIdx;
+            updateLayersUI();
+            render();
+            saveToHistory();
+        });
+        
         layersList.appendChild(layerItem);
     }
 }
